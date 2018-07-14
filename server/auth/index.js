@@ -11,7 +11,7 @@ users.createIndex('email', { unique: true });
 //joi validation schema
 const signupSchema = Joi.object().keys({
     email: Joi.string().email(),
-    password: Joi.string().min(5).max(30).required(),
+    password: Joi.string().trim().min(5).max(30).required(),
 });
 
 

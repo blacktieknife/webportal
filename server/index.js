@@ -1,12 +1,21 @@
 const express = require('express');
 const volleyball = require('volleyball');
-
+const cors = require('cors');
 const app = express();
 
 const auth = require('./auth');
 
+const originURL = process.env.ORIGIN_URL || 'http://localhost:8080';
+
+const corsOptions = {
+    origin:originURL,
+    optionsSuccessStatus: 200
+}
+
 app.use(volleyball);
+app.use(cors(corsOptions));
 app.use(express.json());
+
 
 app.get('/', (req, res) => {
     res.json({

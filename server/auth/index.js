@@ -24,22 +24,22 @@ router.get('/', (req, res) => {
 router.post('/signup', (req, res, next) => {
     const validResult = Joi.validate(req.body, signupSchema);
     if(validResult.error === null) {
-        console.log(validResult.value.email);
         users.findOne({email:validResult.value.email}, 'email').then((user)=>{
             if(user === null) {
                 //\\//\\//\\//hash passwrod here & add user to db here.//||//\\//\\//\\
-                bcrypt.genSalt(10, function(err, salt) {
+                bcrypt.genSalt(13, function(err, salt) {
                     if(!err){
                         bcrypt.hash(validResult.value.password, salt, function(errr, hash) {
                             if(!errr){
-                                // Store hash in your password DB.
-                                users.insert({email:validResult.value.email, password:hash}).then((insertedUser) => {
+                               // Store hash in your password DB.
+                                users.insert({email:validResult.value.email.trim(), password:hash}).then((insertedUser) => {
+                                    delete insertedUser.password;
                                     res.json(insertedUser);
                                 }).catch((err) => {
                                     res.status(500);
                                     next(err);
                                 });
-                                 //respond to client with success
+                               //  respond to client with success
                             } else {
                                 res.status(500);
                                 next(err);

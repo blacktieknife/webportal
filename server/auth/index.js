@@ -1,7 +1,10 @@
 const express = require('express');
 const Joi = require('joi');
-const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
 const router = express.Router();
+
+const encrypt = require('../helpers/encrypt.js');
 
 const db = require('../db/connection.js');
 const users = db.get('users');
@@ -13,7 +16,7 @@ const signupSchema = Joi.object().keys({
     email: Joi.string().email(),
     password: Joi.string().trim().min(5).max(30).required(),
 });
-
+;
 
 router.get('/', (req, res) => {
     res.json({
@@ -27,28 +30,26 @@ router.post('/signup', (req, res, next) => {
         users.findOne({email:validResult.value.email}, 'email').then((user)=>{
             if(user === null) {
                 //\\//\\//\\//hash passwrod here & add user to db here.//||//\\//\\//\\
-                bcrypt.genSalt(13, function(err, salt) {
-                    if(!err){
-                        bcrypt.hash(validResult.value.password, salt, function(errr, hash) {
-                            if(!errr){
-                               // Store hash in your password DB.
-                                users.insert({email:validResult.value.email.trim(), password:hash}).then((insertedUser) => {
-                                    delete insertedUser.password;
-                                    res.json(insertedUser);
-                                }).catch((err) => {
-                                    res.status(500);
-                                    next(err);
-                                });
-                               //  respond to client with success
-                            } else {
+                encrypt.hashPass(validResult.value.password).then((hash) => {
+                    users.insert({email:validResult.value.email.trim(), password:hash}).then((user) => {
+                        delete user.password;
+                        jwt.sign(user, process.env.JWT_TOKEN_SECRET, {expiresIn:60 * 600}, function(err, token){
+                            if(err) {
                                 res.status(500);
-                                next(err);
+                                next(new Error("Server Error"));
+                                console.error("Error Wtih jwt - ",err)
+                            } else {
+                                console.log("TOKEN RECIEVED!!",token)
+                                user.token = token;
+                                res.json(user);
                             }
                         });
-                    } else {
-                        res.status(500);
-                        next(err);
-                    }
+                    }).catch((err) => {
+                        throw new Error(err)
+                    });
+                }).catch((err) => {
+                    res.status(500)
+                    next(new Error("Server Error"));
                 });
             } else {
                 const err = new Error("User Already Exists");
@@ -57,11 +58,40 @@ router.post('/signup', (req, res, next) => {
             }      
         }).catch((err) => {
             res.status(500)
-            next(err);
+            
+            next(new Error("Server Error"));
         });
     } else {
         res.status(400);
         next(validResult.error);
+    }
+});
+
+router.post('/login',(req, res, next) => {
+    const validResult = Joi.validate(req.body, signupSchema);
+    if(validResult.error === null) {
+        const {email, password} = validResult.value;
+        users.findOne({email:email}).then((user) => {
+            if(user !== null) {
+                encrypt.compareHash(password, user.password).then((isMatch) => {
+                    if(isMatch) {
+                        res.json({email:user.email, id:user._id})
+                    } else {
+                        res.status(401);
+                        next(new Error("Unable to login"))
+                    }
+                }).catch((err) => {
+                    res.status(500);
+                    next(new Error("Server Error"))
+                }); 
+            } else {
+                res.status(400);
+                next(new Error("Unable to login"));
+            }
+        });
+    } else {
+        res.status(400);
+        next(new Error("Unable to login"));
     }
 });
 

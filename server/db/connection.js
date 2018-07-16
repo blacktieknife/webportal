@@ -1,5 +1,5 @@
 const monk = require('monk');
-const db = monk('localhost/auth-test');
+const db = monk(process.env.DB_URL);
 
 
 module.exports = db;

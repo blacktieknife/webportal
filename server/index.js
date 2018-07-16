@@ -3,9 +3,10 @@ const volleyball = require('volleyball');
 const cors = require('cors');
 const app = express();
 
+require('dotenv').config();
 const auth = require('./auth');
 
-const originURL = process.env.ORIGIN_URL || 'http://localhost:8080';
+const originURL = process.env.ORIGIN_URL;
 
 const corsOptions = {
     origin:originURL,
@@ -42,7 +43,7 @@ function errorHandler(err, req, res, next) {
 app.use(notFound);
 app.use(errorHandler);
 
-const port = process.env.PORT || 8000;
+const port = process.env.PORT;
 
 app.listen(port, () => {
     console.log("Listening on port ",port);

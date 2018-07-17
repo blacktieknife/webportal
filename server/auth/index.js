@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 
 const router = express.Router();
 
+const tokens = require('../helpers/tokens.js');
 const encrypt = require('../helpers/encrypt.js');
 
 const db = require('../db/connection.js');
@@ -24,43 +25,34 @@ router.get('/', (req, res) => {
     });
 });
 
-router.post('/signup', (req, res, next) => {
+router.post('/signup', async (req, res, next) => {
     const validResult = Joi.validate(req.body, signupSchema);
     if(validResult.error === null) {
-        users.findOne({email:validResult.value.email}, 'email').then((user)=>{
+        try { 
+            const user = await users.findOne({email:validResult.value.email}, 'email');
             if(user === null) {
                 //\\//\\//\\//hash passwrod here & add user to db here.//||//\\//\\//\\
-                encrypt.hashPass(validResult.value.password).then((hash) => {
-                    users.insert({email:validResult.value.email.trim(), password:hash}).then((user) => {
-                        delete user.password;
-                        jwt.sign(user, process.env.JWT_TOKEN_SECRET, {expiresIn:60 * 600}, function(err, token){
-                            if(err) {
-                                res.status(500);
-                                next(new Error("Server Error"));
-                                console.error("Error Wtih jwt - ",err)
-                            } else {
-                                console.log("TOKEN RECIEVED!!",token)
-                                user.token = token;
-                                res.json(user);
-                            }
-                        });
-                    }).catch((err) => {
-                        throw new Error(err)
-                    });
-                }).catch((err) => {
-                    res.status(500)
-                    next(new Error("Server Error"));
-                });
+                const hash = await encrypt.hashPass(validResult.value.password);
+                const insertedUser = await users.insert({email:validResult.value.email.trim(), password:hash});
+                const tokenUser = await tokens.create(insertedUser);
+                const newUser = await users.findOneAndUpdate({email: tokenUser.email}, tokenUser);
+                delete newUser.password;
+                const validToken = await tokens.verify(newUser.token);
+                if(validToken){
+                    res.json(newUser); 
+                } else {
+                    throw new Error("Could not validate token");
+                }               
             } else {
                 const err = new Error("User Already Exists");
                 res.status(400);
                 next(err);
-            }      
-        }).catch((err) => {
-            res.status(500)
-            
-            next(new Error("Server Error"));
-        });
+            } 
+        } catch(err) {
+            res.status(500);
+            next(new Error('Server Error'));
+            console.error(err);
+        }
     } else {
         res.status(400);
         next(validResult.error);

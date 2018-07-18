@@ -19,12 +19,12 @@ const verify = (token) => {
         jwt.verify(token, process.env.JWT_TOKEN_SECRET, (err, decoded) => {
             if(!err){
                 if(decoded){
-                    resolve(true)
+                    resolve(decoded)
                 } else {
                     resolve(false)
                 }
             } else {
-                reject(err)
+                reject(err);
             }
         });
     });

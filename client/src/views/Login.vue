@@ -99,11 +99,12 @@ export default {
           body: JSON.stringify(newUser),
         });
         if (rawResponse.ok) {
-          const content = await rawResponse.json();
-          console.log(content);
+          const user = await rawResponse.json();
+          localStorage.setItem('non-token', user.token);
+          this.$emit('loggedIn', user);
           this.$router.push('dashboard');
           this.$toast.open({
-            duration: 5000,
+            duration: 3500,
             message: 'Successfully Logged In',
             position: 'is-top',
             type: 'is-success',
@@ -125,7 +126,7 @@ export default {
           document.getElementById('email').classList.add('is-danger');
         }
         this.$toast.open({
-          duration: 5000,
+          duration: 10000,
           message: err.message,
           position: 'is-bottom',
           type: 'is-danger',
@@ -137,7 +138,9 @@ export default {
       this.pass = '';
       this.passConfirm = '';
       this.formErrors = [];
-      document.getElementById('signupBtn').classList.remove('is-loading');
+      if (document.getElementById('signupBtn')) {
+        document.getElementById('signupBtn').classList.remove('is-loading');
+      }
     },
     handleFocus(e) {
       e.target.classList.remove('is-danger');
